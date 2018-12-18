@@ -1,0 +1,63 @@
+version: 2
+
+defaults: &defaults
+  working_directory: ~/repo
+  docker:
+    - image: circleci/node:10
+  steps:
+    - checkout
+    - run: sudo npm install npm@6 --global
+    - run: npm install --no-optional --no-save
+    - run: npm run ci:test
+
+jobs:
+  test-node6:
+    <<: *defaults
+    docker:
+      - image: circleci/node:6
+
+  test-node8:
+    <<: *defaults
+    docker:
+      - image: circleci/node:8
+
+  test-node10:
+    <<: *defaults
+    docker:
+      - image: circleci/node:10
+
+  quality-checks:
+    docker:
+      - image: circleci/python:3
+      - image: circleci/node:10
+    steps:
+      - checkout
+      - run: python -m venv ./venv
+      - run: echo "source $(pwd)/venv/bin/activate" >> $BASH_ENV
+      - run: pip install -r ./docs/requirements.txt
+      - run: npm install --no-optional --no-save
+      - run: npm run ci:lint
+
+  docs-dry-run:
+    # why dry run? because production build happens directly on ReadTheDocs infrastructure
+    docker:
+      - image: circleci/python:3
+      - image: circleci/node:10
+    steps:
+      - checkout
+      - run: python -m venv ./venv
+      - run: echo "source $(pwd)/venv/bin/activate" >> $BASH_ENV
+      - run: pip install -r ./docs/requirements.txt
+      - run: npm install --no-optional --no-save
+      - run: npm run ci:docs
+
+
+workflows:
+  version: 2
+  test-publish:
+    jobs:
+      - test-node6
+      - test-node8
+      - test-node10
+      - quality-checks
+      - docs-dry-run
